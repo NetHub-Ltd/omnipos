@@ -1,0 +1,12 @@
+
+*/dist
+*/__pycache__/*
+*.log
+*.bak
+*.tmp
+*.swp
+*__pycache*
+
+*.env
+*.env*
+*idea
