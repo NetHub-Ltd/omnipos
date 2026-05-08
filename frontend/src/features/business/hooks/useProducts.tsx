@@ -54,7 +54,8 @@ export function useProducts(businessId: string) {
 
   // --- UPDATE PRODUCT ---
   const updateProduct = useMutation({
-    mutationFn: async (update: Partial<Product> & { product_id: string }) => {
+    mutationFn: async (update: Partial<Product>) => {
+      console.log("Updating product with data:", update);
       const { data } = await axios.patch("/api/v1/products", update);
       return data;
     },

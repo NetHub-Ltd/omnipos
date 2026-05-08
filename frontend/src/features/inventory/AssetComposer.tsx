@@ -1,39 +1,49 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import {
   Save,
   ArrowLeft,
-  Package,
   Layers,
-  Tag,
   DollarSign,
   Info,
   Loader2,
   Database,
 } from "lucide-react";
 import { useProducts, Product } from "@/features/business/hooks/useProducts";
-import { useBusinessContext } from "@/features/business/hooks/useBusiness";
+
 import { cn } from "@/lib/utils";
+
+/**
+ * @Scribe_Audit
+ * Logic: Fixed hydration bug by memoizing existingProduct and ensuring reset()
+ * triggers only when valid data arrives.
+ * UX: Added proper number handling for valueAsNumber to prevent "string-in-JSON" API errors.
+ */
 
 interface AssetComposerProps {
   productId?: string;
+  businessId: string; // Passed from Server Page for immediate hydration
 }
 
-export function AssetComposer({ productId }: AssetComposerProps) {
+export function AssetComposer({ productId, businessId }: AssetComposerProps) {
   const router = useRouter();
-  const { businessId } = useBusinessContext();
+
+  // Directly use the businessId passed from the server segment to avoid context lag
   const {
     products,
     createProduct,
     updateProduct,
     isLoading: isFetching,
-  } = useProducts(businessId as string);
+  } = useProducts(businessId);
 
-  // Find product if in edit mode
-  const existingProduct = products.find((p) => p.id === productId);
+  // Memoize lookup to prevent unnecessary recalculations during re-renders
+  const existingProduct = useMemo(() => {
+    if (!productId || !products) return null;
+    return products.find((p) => p.id === productId);
+  }, [products, productId]);
 
   const {
     register,
@@ -49,27 +59,35 @@ export function AssetComposer({ productId }: AssetComposerProps) {
       attributes: {
         unit_of_measure: "pcs",
         category: "General",
-        unit_price: 0,
       },
     },
   });
 
-  // Hydrate form when editing
+  // CRITICAL FIX: Ensure the form hydrates once the products are actually loaded
   useEffect(() => {
     if (existingProduct) {
-      reset(existingProduct);
+      reset({
+        name: existingProduct.name,
+        price: existingProduct.price,
+        stock: existingProduct.stock,
+        active: existingProduct.active,
+        attributes: {
+          category: existingProduct.attributes?.category || "General",
+          unit_of_measure: existingProduct.attributes?.unit_of_measure || "pcs",
+        },
+      });
     }
   }, [existingProduct, reset]);
 
   const onSubmit = (data: Partial<Product>) => {
     if (productId) {
       updateProduct.mutate(
-        { ...data, product_id: productId },
+        { ...data, id: productId },
         { onSuccess: () => router.push(`/terminal/${businessId}/inventory`) },
       );
     } else {
       createProduct.mutate(
-        { ...data, business_id: businessId as string },
+        { ...data, business_id: businessId },
         { onSuccess: () => router.push(`/terminal/${businessId}/inventory`) },
       );
     }
@@ -77,17 +95,20 @@ export function AssetComposer({ productId }: AssetComposerProps) {
 
   const isPending = createProduct.isPending || updateProduct.isPending;
 
-  if (productId && isFetching) {
+  // UX: Show skeleton/loader only when we are strictly expecting a product that isn't here yet
+  if (productId && isFetching && !existingProduct) {
     return (
-      <div className="h-screen w-full flex items-center justify-center">
+      <div className="h-[60vh] w-full flex flex-col items-center justify-center gap-4">
         <Loader2 className="animate-spin text-primary" size={40} />
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-secondary/40">
+          Syncing Asset Data...
+        </p>
       </div>
     );
   }
 
   return (
-    <main className="flex-1 flex flex-col p-6 md:p-10 gap-8 max-w-[1000px] mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Navigation & Title */}
+    <main className="flex-1 flex flex-col p-6 md:p-10 gap-8 max-w-250 mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header className="flex flex-col gap-6">
         <button
           onClick={() => router.back()}
@@ -118,7 +139,6 @@ export function AssetComposer({ productId }: AssetComposerProps) {
         onSubmit={handleSubmit(onSubmit)}
         className="grid grid-cols-1 md:grid-cols-3 gap-8"
       >
-        {/* Main Specs */}
         <section className="md:col-span-2 space-y-8">
           <div className="bg-card border border-border rounded-[2.5rem] p-8 shadow-soft space-y-6">
             <div className="space-y-2">
@@ -126,7 +146,7 @@ export function AssetComposer({ productId }: AssetComposerProps) {
                 Asset Name
               </label>
               <input
-                {...register("name", { required: true })}
+                {...register("name", { required: "Asset name is required" })}
                 placeholder="Product Display Name"
                 className={cn(
                   "w-full bg-background border-2 border-border rounded-2xl py-4 px-6 text-lg font-bold focus:border-primary outline-none transition-all",
@@ -148,7 +168,10 @@ export function AssetComposer({ productId }: AssetComposerProps) {
                   <input
                     type="number"
                     step="0.01"
-                    {...register("price", { valueAsNumber: true })}
+                    {...register("price", {
+                      valueAsNumber: true,
+                      required: true,
+                    })}
                     className="w-full bg-background border-2 border-border rounded-2xl py-4 pl-12 pr-6 text-xl font-black italic tabular-nums focus:border-emerald-500 outline-none transition-all"
                   />
                 </div>
@@ -165,7 +188,10 @@ export function AssetComposer({ productId }: AssetComposerProps) {
                   />
                   <input
                     type="number"
-                    {...register("stock", { valueAsNumber: true })}
+                    {...register("stock", {
+                      valueAsNumber: true,
+                      required: true,
+                    })}
                     className="w-full bg-background border-2 border-border rounded-2xl py-4 pl-12 pr-6 text-xl font-black italic tabular-nums focus:border-primary outline-none transition-all"
                   />
                 </div>
@@ -184,7 +210,7 @@ export function AssetComposer({ productId }: AssetComposerProps) {
                 </label>
                 <input
                   {...register("attributes.category")}
-                  className="w-full bg-background border-2 border-border rounded-2xl py-4 px-6 font-bold"
+                  className="w-full bg-background border-2 border-border rounded-2xl py-4 px-6 font-bold focus:border-primary outline-none transition-all"
                 />
               </div>
               <div className="space-y-2">
@@ -193,7 +219,7 @@ export function AssetComposer({ productId }: AssetComposerProps) {
                 </label>
                 <select
                   {...register("attributes.unit_of_measure")}
-                  className="w-full h-[60px] bg-background border-2 border-border rounded-2xl px-6 font-bold appearance-none"
+                  className="w-full h-[60px] bg-background border-2 border-border rounded-2xl px-6 font-bold appearance-none focus:border-primary outline-none transition-all"
                 >
                   <option value="pcs">Pieces (PCS)</option>
                   <option value="kg">Kilograms (KG)</option>
@@ -204,7 +230,6 @@ export function AssetComposer({ productId }: AssetComposerProps) {
           </div>
         </section>
 
-        {/* Sidebar Actions */}
         <aside className="space-y-8">
           <div className="bg-card border border-border rounded-[2.5rem] p-8 shadow-soft">
             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary/40 mb-6">
@@ -217,7 +242,7 @@ export function AssetComposer({ productId }: AssetComposerProps) {
               <input
                 type="checkbox"
                 {...register("active")}
-                className="w-6 h-6 rounded-lg border-2 border-border checked:bg-primary transition-all"
+                className="w-6 h-6 rounded-lg border-2 border-border accent-primary transition-all"
               />
             </label>
 
@@ -225,7 +250,7 @@ export function AssetComposer({ productId }: AssetComposerProps) {
 
             <button
               type="submit"
-              disabled={isPending || (productId && !isDirty)}
+              disabled={Boolean(isPending || (productId && !isDirty))}
               className="w-full py-6 bg-foreground text-background dark:bg-primary dark:text-primary-foreground rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 shadow-xl hover:-translate-y-1 active:translate-y-0 transition-all disabled:opacity-50 disabled:grayscale"
             >
               {isPending ? (
@@ -235,13 +260,6 @@ export function AssetComposer({ productId }: AssetComposerProps) {
               )}
               {productId ? "Update Record" : "Save Asset"}
             </button>
-          </div>
-
-          <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10">
-            <p className="text-[10px] leading-relaxed font-medium text-secondary/60 italic">
-              Changes to pricing are reflected immediately in the Terminal
-              Cockpit for all active sessions.
-            </p>
           </div>
         </aside>
       </form>
