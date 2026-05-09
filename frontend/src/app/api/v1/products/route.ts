@@ -53,6 +53,8 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  console.log("Creating a product with body:", body); // Debug log
   const res = await fetch(`${API_BASE}/products/register`, {
     method: "POST",
     headers: {

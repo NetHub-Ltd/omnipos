@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 import TerminalCockpit from "@/features/business/components/TerminalCockpit";
 
+
 /**
  * @Scribe_Audit
  * SEO: No-index for internal terminal routes to protect business data.

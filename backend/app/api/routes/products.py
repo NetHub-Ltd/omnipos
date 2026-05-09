@@ -1,22 +1,20 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException
+from pydantic import ValidationError
 from starlette import status
 
-from app.api.deps import get_session, SessionDep
+from app.api.deps import SessionDep
 from app.crud.product import product_crud
-from app.schemas.schemas import CategoryCreate, CategoryResponse, ProductResponse, ProductCreate, ApiResponse, \
-    ProductUpdate
+from app.schemas.schemas import ProductResponse, ProductCreate, ApiResponse, \
+    ProductUpdate, ProductBase
 from app.utils.logging import logger
-
-# from app.core.database import get_session
 
 router = APIRouter()
 
 
-@router.get("/multi/{business_id}", response_model=ApiResponse[List[ProductResponse]])
+@router.get("/multi/{business_id}", response_model=ApiResponse[List[ProductResponse]], operation_id="getBusinessProducts")
 async def get_products(db: SessionDep, business_id:UUID):
     """
     GET /products
@@ -66,151 +64,12 @@ async def get_products(db: SessionDep, business_id:UUID):
     if not business_id:
         raise HTTPException(status_code=400, detail="Business ID is required")
     db_objs = await product_crud.fetch_business_products(business_id, db)
-    if not db_objs:
-        raise HTTPException(status_code=404, detail="No products found")
     return ApiResponse(status=True, status_code=200, message="Success", data=db_objs)
 
 
 
-@router.get("/{product_id}/attributes")
-async def get_product_attributes(product_id: int, session: AsyncSession = Depends(get_session)):
-    """
-    GET /products/{product_id}/attributes
-
-    PURPOSE:
-    --------
-    Fetch only the dynamic attributes of a product.
-
-    DESIGN PRINCIPLE:
-    -----------------
-    Isolate editable data for forms and UI components.
-
-    RESPONSE SHAPE:
-    ----------------
-    {
-        "key": value
-    }
-
-    USE CASES:
-    ----------
-    - Edit product form
-    - Dynamic UI rendering
-
-    NOTES:
-    ------
-    - No category data
-    - No behavior logic
-    """
-    pass
-
-
-@router.get("/{product_id}/alerts")
-async def get_product_alerts(product_id: int, session: AsyncSession = Depends(get_session)):
-    """
-    GET /products/{product_id}/alerts
-
-    PURPOSE:
-    --------
-    Fetch computed alert state for a product.
-
-    DESIGN PRINCIPLE:
-    -----------------
-    Return ONLY actionable runtime information.
-
-    RESPONSE SHAPE:
-    ----------------
-    {
-        "low_stock": bool,
-        "expiry": bool
-    }
-
-    NOTES:
-    ------
-    - This is COMPUTED data (not stored)
-    - Should be lightweight and fast
-    - Can be polled frequently
-    - MUST NOT expose behavior configuration
-    """
-    pass
-
-
-@router.get("/{product_id}/behavior")
-async def get_product_behavior(product_id: int, session: AsyncSession = Depends(get_session)):
-    """
-    GET /products/{product_id}/behavior
-
-    PURPOSE:
-    --------
-    Fetch resolved behavior configuration for a product.
-
-    DESIGN PRINCIPLE:
-    -----------------
-    This endpoint is for ADMIN / DEBUG use only.
-
-    RESPONSE SHAPE:
-    ----------------
-    {
-        "stock_alert": {
-            "enabled": bool,
-            "threshold": int
-        },
-        "expiry_alert": {
-            "enabled": bool,
-            "trigger_before_days": int
-        }
-    }
-
-    NOTES:
-    ------
-    - Combines category behavior + product overrides
-    - MUST NOT include computed fields (no is_triggered)
-    - Not required for POS flows
-    """
-    pass
-
-
-@router.get("/schema/{category_id}")
-async def get_product_schema(category_id: int, session: AsyncSession = Depends(get_session)):
-    """
-    GET /products/schema/{category_id}
-
-    PURPOSE:
-    --------
-    Fetch attribute schema for a category to dynamically build forms.
-
-    DESIGN PRINCIPLE:
-    -----------------
-    Backend defines structure → frontend renders UI.
-
-    RESPONSE SHAPE:
-    ----------------
-    {
-        "fields": [
-            {
-                "name": str,
-                "type": str,
-                "required": bool,
-                "label": str
-            }
-        ]
-    }
-
-    USE CASES:
-    ----------
-    - Dynamic product creation forms
-    - Category-based UI rendering
-    - Validation alignment (frontend + backend)
-
-    NOTES:
-    ------
-    - Driven by AttributeDefinition + CategoryAttribute
-    - No product-specific data here
-    """
-    pass
-
-
-@router.get("/{product_id}")
-async def get_product_detail(product_id: int, session: AsyncSession = Depends(get_session)):
+@router.get("/{product_id}", response_model=ApiResponse[ProductResponse], operation_id="getProductDetail")
+async def get_product_detail(product_id: UUID, db: SessionDep):
     """
     GET /products/{product_id}
 
@@ -248,19 +107,14 @@ async def get_product_detail(product_id: int, session: AsyncSession = Depends(ge
     - MUST NOT include behavior config
     - MUST NOT include alerts
     """
-    pass
+    db_obj = await product_crud.get(db, product_id)
+    if not product_id:
+        raise HTTPException(status_code=400, detail="Product ID is required")
+    if not db_obj:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return ApiResponse(status=True, status_code=200, message="Success", data=db_obj)
 
-
-@router.get('/categories', response_model=list[CategoryResponse])
-async def get_categories(db: SessionDep):
-    return await product_crud.fetch_categories(db=db)
-
-@router.post('/register-categories', status_code=200, response_model=CategoryResponse)
-async def create_categories(db: SessionDep, obj_data: CategoryCreate):
-    db_obj = await product_crud.create_category(db_obj=obj_data, db=db)
-    return db_obj
-
-@router.post("/register")
+@router.post("/register", response_model=ApiResponse[ProductResponse], operation_id="createProduct")
 async def create_product(db: SessionDep, payload: ProductCreate,):
     """
     POST /products
@@ -308,15 +162,24 @@ async def create_product(db: SessionDep, payload: ProductCreate,):
     - No behavior logic should run here
     - No alerts should be computed here
     """
-    logger.info(payload.model_dump())
-    db_obj = await product_crud.create(db, obj_in=payload.model_dump())
-    await db.commit()
-    return db_obj
+    try:
+        data = ProductBase(**payload.model_dump())
+        logger.info(data)
+        # db_obj = await product_crud.create(db_obj=data,)
+        db_obj = await product_crud.create(db, obj_in=data.model_dump())
+        await db.commit()
+        return ApiResponse(
+            status=True,
+            status_code=status.HTTP_201_CREATED,
+            message="Product created successfully",
+            data=db_obj
+        )
+    except ValidationError as err:
+        logger.error(err)
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,"Invalid data")
 
-
-
-@router.patch("/{product_id}")
-async def update_product(product_id: int, db: SessionDep, payload: ProductUpdate):
+@router.patch("/{product_id}", response_model=ApiResponse[ProductResponse], operation_id="updateProduct")
+async def update_product(product_id: UUID, db: SessionDep, payload: ProductUpdate):
     """
     PATCH /products/{product_id}
 
@@ -358,14 +221,14 @@ async def update_product(product_id: int, db: SessionDep, payload: ProductUpdate
     - Partial updates allowed
     - No behavior logic executed
     """
-    prod = product_crud.get(db, product_id)
+    prod = await product_crud.get(db, product_id)
     if not prod:
         raise HTTPException(status_code=404, detail="Product not found")
+    new_obj = await  product_crud.update_product(product_id=prod.id, payload=payload, db=db)
+    return ApiResponse(status_code=status.HTTP_200_OK, data=new_obj, status=True, message="Product updated successfully")
 
 
-
-
-@router.delete("/{product_id}")
+@router.delete("/{product_id}", status_code=204, operation_id="deleteProduct")
 async def delete_product(product_id: UUID, db: SessionDep):
     """
     DELETE /products/{product_id}

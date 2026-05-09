@@ -101,10 +101,10 @@ export const CartSidebar = ({ businessId }: { businessId?: string }) => {
             >
               <div className="flex-1 min-w-0 pr-4">
                 <p className="font-bold text-xs truncate uppercase text-foreground">
-                  {item.name}
+                  {item.label}
                 </p>
                 <p className="text-[10px] font-mono text-secondary/60 mt-0.5">
-                  Ksh {item.price.toLocaleString()}
+                  Ksh {item.selling_price.toLocaleString()}
                 </p>
               </div>
 
@@ -128,7 +128,7 @@ export const CartSidebar = ({ businessId }: { businessId?: string }) => {
 
               <div className="w-24 text-right">
                 <p className="font-black text-xs text-foreground italic tabular-nums">
-                  Ksh {(item.price * item.qty).toLocaleString()}
+                  Ksh {(item.selling_price * item.qty).toLocaleString()}
                 </p>
               </div>
             </div>
