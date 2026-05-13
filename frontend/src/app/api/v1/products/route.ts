@@ -77,13 +77,14 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = await request.json();
-  if (!body || !body.product_id) {
+  console.log("Update request body:", body); // Debug log
+  if (!body) {
     return NextResponse.json(
       { error: "Invalid request body" },
       { status: 400 },
     );
   }
-  const res = await fetch(`${API_BASE}/products/update`, {
+  const res = await fetch(`${API_BASE}/products/${body.id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -121,9 +122,9 @@ export async function DELETE(request: Request) {
     },
     body: null, // DELETE typically doesn't have a body, but if your backend expects it, you can include it
   });
-  const data = await res.json();
-  if (!data.status) {
-    return NextResponse.json({ error: data.message }, { status: res.status });
+  if (!res.ok) {
+    const errorData = await res.json();
+    return NextResponse.json({ error: errorData.message || "Failed to delete product" }, { status: res.status });
   }
   return NextResponse.json(
     { message: "Product deleted successfully" },

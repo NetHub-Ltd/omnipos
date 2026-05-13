@@ -1,25 +1,294 @@
+
+// "use client";
+// import { RegistryRow } from "@/features/inventory/RegistryRow";
+// import React, { useMemo, useState } from "react";
+// import Link from "next/link";
+// import {
+//   Edit3,
+//   Trash2,
+//   Plus,
+//   Search,
+//   AlertTriangle,
+//   CheckCircle2,
+//   PackageSearch,
+//   ChevronLeft,
+//   ChevronRight,
+//   Filter,
+// } from "lucide-react";
+// import { useProducts } from "@/features/business/hooks/useProducts";
+// import { useBusinessContext } from "@/features/business/hooks/useBusiness";
+// import { cn } from "@/lib/utils";
+// import { ProductResponse } from "@/lib/api/generated/models";
+
+// /**
+//  * @Scribe_Audit
+//  * Aesthetic: "Sheet-like" Data Grid. Minimal rounding, high-density contrast.
+//  * Logic: Fixed property access mapping (name -> label, price -> selling_price).
+//  * UX: Added pagination controls and row-hover elevation.
+//  */
+
+// export function InventoryRegistry() {
+//   const { businessId } = useBusinessContext();
+//   const { products, isLoading, updateProduct, deleteProduct } = useProducts(
+//     businessId as string,
+//   );
+
+//   const [searchQuery, setSearchQuery] = useState("");
+//   const [currentPage, setCurrentPage] = useState(1);
+//   const itemsPerPage = 10;
+
+//   // Filter logic based on ProductResponse schema
+//   const filteredItems = useMemo(() => {
+//     if (!products) return [];
+//     return products.filter(
+//       (p) =>
+//         p.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+//         p.attributes?.sku?.toLowerCase().includes(searchQuery.toLowerCase()),
+//     );
+//   }, [products, searchQuery]);
+
+//   const paginatedItems = useMemo(() => {
+//     const start = (currentPage - 1) * itemsPerPage;
+//     return filteredItems.slice(start, start + itemsPerPage);
+//   }, [filteredItems, currentPage]);
+
+//   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+
+//   const handleDelete = (id: string, name: string) => {
+//     if (confirm(`DECOMMISSION ASSET: [${name}]? This action is logged.`)) {
+//       deleteProduct.mutate(id);
+//     }
+//   };
+
+//   const toggleStatus = (id: string, currentStatus: boolean) => {
+//     updateProduct.mutate({ id, active: !currentStatus });
+//   };
+
+//   return (
+//     <main className="flex-1 flex flex-col min-h-screen bg-background">
+//       {/* Precision Header */}
+//       <header className="border-b border-border bg-card px-8 py-6 flex items-center justify-between sticky top-0 z-10">
+//         <div className="flex items-center gap-6">
+//           <div className="h-12 w-12 bg-primary/5 rounded-lg flex items-center justify-center text-primary border border-primary/10">
+//             <PackageSearch size={24} strokeWidth={1.5} />
+//           </div>
+//           <div>
+//             <h1 className="text-xl font-black uppercase tracking-tight leading-none">
+//               Asset <span className="text-primary">Registry</span>
+//             </h1>
+//             <p className="text-[10px] font-mono text-secondary/40 uppercase tracking-[0.2em] mt-1">
+//               Ref: INVENTORY_DB_KNY_{new Date().getFullYear()}
+//             </p>
+//           </div>
+//         </div>
+
+//         <div className="flex items-center gap-4">
+//           <div className="relative group">
+//             <Search
+//               className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary/30 group-focus-within:text-primary transition-colors"
+//               size={14}
+//             />
+//             <input
+//               type="text"
+//               placeholder="Search SKU / Label..."
+//               value={searchQuery}
+//               onChange={(e) => setSearchQuery(e.target.value)}
+//               className="h-10 w-64 bg-muted/50 border border-border rounded-md px-10 text-[11px] font-bold uppercase tracking-widest focus:ring-2 focus:ring-primary/10 outline-none transition-all"
+//             />
+//           </div>
+//           <Link href={`/terminal/${businessId}/inventory/manage`}>
+//             <button className="h-10 px-5 bg-foreground text-background dark:bg-primary dark:text-primary-foreground rounded-md font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+//               <Plus size={14} strokeWidth={3} /> Register Asset
+//             </button>
+//           </Link>
+//         </div>
+//       </header>
+
+//       {/* Sheet Layout */}
+//       <div className="flex-1 p-8">
+//         <div className="bg-card border border-border rounded-sm shadow-sm overflow-hidden flex flex-col">
+//           <div className="overflow-x-auto">
+//             <table className="w-full border-collapse text-left">
+//               <thead>
+//                 <tr className="bg-muted/50 border-b border-border">
+//                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50 w-24">
+//                     Status
+//                   </th>
+//                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50">
+//                     SKU / Identifier
+//                   </th>
+//                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50">
+//                     Asset Description
+//                   </th>
+//                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50 text-right">
+//                     Unit Price (Ksh)
+//                   </th>
+//                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50 text-right w-32">
+//                     Inventory
+//                   </th>
+//                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50 text-center w-24">
+//                     Actions
+//                   </th>
+//                 </tr>
+//               </thead>
+//               <tbody className="divide-y divide-border/30">
+//                 {isLoading ? (
+//                   <SkeletonRows />
+//                 ) : paginatedItems.length === 0 ? (
+//                   <tr>
+//                     <td
+//                       colSpan={6}
+//                       className="px-6 py-20 text-center opacity-20"
+//                     >
+//                       <p className="text-[10px] font-black uppercase tracking-[0.5em]">
+//                         No records found
+//                       </p>
+//                     </td>
+//                   </tr>
+//                 ) : (
+//                   paginatedItems.map((product) => (
+//                     <tr
+//                       key={product.id}
+//                       className="hover:bg-muted/20 transition-colors group"
+//                     >
+//                       <td className="px-6 py-4">
+//                         <button
+//                           onClick={() =>
+//                             toggleStatus(product.id, product.active)
+//                           }
+//                           className={cn(
+//                             "px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter border transition-all",
+//                             product.active
+//                               ? "bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm"
+//                               : "bg-red-50 text-red-700 border-red-200",
+//                           )}
+//                         >
+//                           {product.active ? "LIVE" : "ARCHIVED"}
+//                         </button>
+//                       </td>
+//                       <td className="px-6 py-4 font-mono text-[11px] text-secondary/60">
+//                         {product.attributes?.sku || "NO_SKU"}
+//                       </td>
+//                       <td className="px-6 py-4">
+//                         <span className="text-xs font-bold text-foreground uppercase tracking-tight">
+//                           {product.label}
+//                         </span>
+//                       </td>
+//                       <td className="px-6 py-4 text-right tabular-nums text-xs font-black italic">
+//                         {product.selling_price.toLocaleString(undefined, {
+//                           minimumFractionDigits: 2,
+//                         })}
+//                       </td>
+//                       <td className="px-6 py-4 text-right tabular-nums">
+//                         <div className="flex flex-col items-end">
+//                           <span
+//                             className={cn(
+//                               "text-xs font-black",
+//                               product.stock <= 5
+//                                 ? "text-red-500"
+//                                 : "text-foreground",
+//                             )}
+//                           >
+//                             {product.stock}
+//                           </span>
+//                           <span className="text-[8px] font-bold uppercase text-secondary/30">
+//                             {product.attributes?.unit_of_measure || "pcs"}
+//                           </span>
+//                         </div>
+//                       </td>
+//                       <td className="px-6 py-4">
+//                         <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+//                           <Link
+//                             href={`/terminal/${businessId}/inventory/manage/${product.id}`}
+//                           >
+//                             <button className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20 transition-all">
+//                               <Edit3 size={14} />
+//                             </button>
+//                           </Link>
+//                           <button
+//                             onClick={() =>
+//                               handleDelete(product.id, product.label)
+//                             }
+//                             className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-red-50 hover:text-red-500 border border-transparent hover:border-red-200 transition-all"
+//                           >
+//                             <Trash2 size={14} />
+//                           </button>
+//                         </div>
+//                       </td>
+//                     </tr>
+//                   ))
+//                 )}
+//               </tbody>
+//             </table>
+//           </div>
+
+//           {/* Sheet Footer: Pagination */}
+//           <footer className="border-t border-border bg-muted/20 px-6 py-4 flex items-center justify-between">
+//             <span className="text-[10px] font-bold text-secondary/50 uppercase tracking-[0.2em]">
+//               Showing {paginatedItems.length} of {filteredItems.length} records
+//             </span>
+//             <div className="flex items-center gap-2">
+//               <button
+//                 disabled={currentPage === 1}
+//                 onClick={() => setCurrentPage((p) => p - 1)}
+//                 className="h-8 w-8 rounded border border-border bg-card flex items-center justify-center text-secondary/60 hover:text-primary disabled:opacity-30 transition-all"
+//               >
+//                 <ChevronLeft size={16} />
+//               </button>
+//               <div className="px-4 text-[10px] font-black tracking-widest text-foreground">
+//                 PAGE {currentPage} / {totalPages || 1}
+//               </div>
+//               <button
+//                 disabled={currentPage === totalPages || totalPages === 0}
+//                 onClick={() => setCurrentPage((p) => p + 1)}
+//                 className="h-8 w-8 rounded border border-border bg-card flex items-center justify-center text-secondary/60 hover:text-primary disabled:opacity-30 transition-all"
+//               >
+//                 <ChevronRight size={16} />
+//               </button>
+//             </div>
+//           </footer>
+//         </div>
+//       </div>
+//     </main>
+//   );
+// }
+
+// function SkeletonRows() {
+//   return (
+//     <>
+//       {[...Array(8)].map((_, i) => (
+//         <tr key={i} className="animate-pulse">
+//           <td colSpan={6} className="px-6 py-4 h-16 border-b border-border/10">
+//             <div className="h-4 bg-muted/40 rounded-sm w-full" />
+//           </td>
+//         </tr>
+//       ))}
+//     </>
+//   );
+// }
+
+
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Edit3,
-  Trash2,
   Plus,
   Search,
-  AlertTriangle,
-  CheckCircle2,
   PackageSearch,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { useProducts, Product } from "@/features/business/hooks/useProducts";
+import { RegistryRow } from "@/features/inventory/RegistryRow";
+import { useProducts } from "@/features/business/hooks/useProducts";
 import { useBusinessContext } from "@/features/business/hooks/useBusiness";
-import { cn } from "@/lib/utils";
+import { ProductResponse } from "@/lib/api/generated/models";
 
 /**
  * @Scribe_Audit
- * Performance: Memoized table rows to prevent unnecessary re-renders during search.
- * Accessibility: Added aria-labels to icon-only buttons (Fitts's Law compliance).
- * Architecture: Aligned routing with the optional catch-all segment [[...id]].
+ * Architecture: Refactored to map over RegistryRow for inline editing capabilities.
+ * Logic: Centralized update/delete handlers passed to atomic children.
+ * Performance: Memoized pagination and filtering to handle registry scaling.
  */
 
 export function InventoryRegistry() {
@@ -28,161 +297,161 @@ export function InventoryRegistry() {
     businessId as string,
   );
 
-  // Search local state could be added here for zero-latency filtering
-  const registryItems = useMemo(() => products, [products]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const filteredItems = useMemo(() => {
+    if (!products) return [];
+    return products.filter(
+      (p) =>
+        p.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.attributes?.sku?.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [products, searchQuery]);
+
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredItems.slice(start, start + itemsPerPage);
+  }, [filteredItems, currentPage]);
+
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+
+  const handleUpdate = (id: string, data: Partial<ProductResponse>) => {
+    updateProduct.mutate({ id, ...data });
+  };
 
   const handleDelete = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to decommission ${name}?`)) {
+    if (confirm(`DECOMMISSION ASSET: [${name}]? This action is logged.`)) {
       deleteProduct.mutate(id);
     }
   };
 
-  const toggleStatus = (id: string, currentStatus: boolean) => {
-    updateProduct.mutate({ id, active: !currentStatus });
-  };
-
   return (
-    <main className="flex-1 flex flex-col p-6 md:p-10 gap-8 max-w-[1600px] mx-auto w-full animate-in fade-in duration-500">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-primary">
-            <PackageSearch size={18} className="stroke-[2.5]" />
-            <span className="text-[10px] font-black uppercase tracking-[0.4em]">
-              Inventory_Master / v1.0.4
-            </span>
+    <main className="flex-1 flex flex-col min-h-screen bg-background">
+      {/* Precision Header */}
+      <header className="border-b border-border bg-card px-8 py-6 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-6">
+          <div className="h-12 w-12 bg-primary/5 rounded-lg flex items-center justify-center text-primary border border-primary/10">
+            <PackageSearch size={24} strokeWidth={1.5} />
           </div>
-          <h1 className="text-5xl font-black uppercase tracking-tighter italic">
-            Asset <span className="text-primary">Registry</span>
-          </h1>
+          <div>
+            <h1 className="text-xl font-black uppercase tracking-tight leading-none">
+              Asset <span className="text-primary">Registry</span>
+            </h1>
+            <p className="text-[10px] font-mono text-secondary/40 uppercase tracking-[0.2em] mt-1">
+              Ref: INVENTORY_DB_KNY_{new Date().getFullYear()}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <div className="relative group">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary/40 group-focus-within:text-primary transition-colors"
-              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary/30 group-focus-within:text-primary transition-colors"
+              size={14}
             />
             <input
               type="text"
-              placeholder="Search SKUs or Assets..."
-              className="h-14 pl-12 pr-6 bg-card border border-border rounded-2xl text-xs font-bold uppercase tracking-widest focus:ring-4 focus:ring-primary/5 transition-all outline-none w-64 lg:w-80"
-              aria-label="Search Inventory"
+              placeholder="Search SKU / Label..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1); // Reset to page 1 on search
+              }}
+              className="h-10 w-64 bg-muted/50 border border-border rounded-md px-10 text-[11px] font-bold uppercase tracking-widest focus:ring-2 focus:ring-primary/10 outline-none transition-all"
             />
           </div>
           <Link href={`/terminal/${businessId}/inventory/manage`}>
-            <button className="h-14 flex items-center gap-3 px-8 bg-foreground text-background dark:bg-primary dark:text-primary-foreground rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:-translate-y-1 active:translate-y-0 transition-all">
-              <Plus size={16} /> Add New Asset
+            <button className="h-10 px-5 bg-foreground text-background dark:bg-primary dark:text-primary-foreground rounded-md font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all">
+              <Plus size={14} strokeWidth={3} /> Register Asset
             </button>
           </Link>
         </div>
       </header>
 
-      <div className="bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-soft">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-muted/30 border-b border-border">
-                <th className="text-left px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-secondary/50">
-                  Status
-                </th>
-                <th className="text-left px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-secondary/50">
-                  Asset Info
-                </th>
-                <th className="text-right px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-secondary/50">
-                  Retail Price
-                </th>
-                <th className="text-right px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-secondary/50">
-                  Stock
-                </th>
-                <th className="text-center px-8 py-6 text-[10px] font-black uppercase tracking-[0.2em] text-secondary/50">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/40">
-              {isLoading ? (
-                <SkeletonRows />
-              ) : (
-                registryItems.map((product) => (
-                  <tr
-                    key={product.id}
-                    className="group hover:bg-muted/10 transition-colors"
-                  >
-                    <td className="px-8 py-6">
-                      <button
-                        onClick={() => toggleStatus(product.id, product.active)}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-tighter border transition-all",
-                          product.active
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                            : "bg-red-50 text-red-600 border-red-100",
-                        )}
-                      >
-                        {product.active ? (
-                          <CheckCircle2 size={10} />
-                        ) : (
-                          <AlertTriangle size={10} />
-                        )}
-                        {product.active ? "Active" : "Archived"}
-                      </button>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-foreground uppercase truncate max-w-[200px]">
-                          {product.name}
-                        </span>
-                        <span className="text-[10px] font-mono text-secondary/40 uppercase mt-1">
-                          {product.attributes?.category || "Uncategorized"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6 text-right font-black italic tabular-nums text-sm">
-                      Ksh{" "}
-                      {product.price.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                      })}
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="inline-flex flex-col items-end">
-                        <span
-                          className={cn(
-                            "text-sm font-black",
-                            product.stock <= 5
-                              ? "text-red-500"
-                              : "text-foreground",
-                          )}
-                        >
-                          {product.stock}
-                        </span>
-                        <span className="text-[8px] font-black uppercase text-secondary/30">
-                          {product.attributes?.unit_of_measure}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex items-center justify-center gap-2">
-                        <Link
-                          href={`/terminal/${businessId}/inventory/manage/${product.id}`}
-                          aria-label={`Edit ${product.name}`}
-                        >
-                          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-primary/10 hover:text-primary transition-all">
-                            <Edit3 size={16} />
-                          </div>
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(product.id, product.name)}
-                          className="h-10 w-10 flex items-center justify-center rounded-xl bg-muted/50 hover:bg-red-50 hover:text-red-500 transition-all"
-                          aria-label={`Delete ${product.name}`}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+      {/* Sheet Layout */}
+      <div className="flex-1 p-8">
+        <div className="bg-card border border-border rounded-sm shadow-sm overflow-hidden flex flex-col">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50 w-24">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50 w-48">
+                    SKU / Identifier
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50">
+                    Asset Description
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50 text-right w-40">
+                    Unit Price (Ksh)
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50 text-right w-32">
+                    Inventory
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-secondary/50 text-center w-28">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/30">
+                {isLoading ? (
+                  <SkeletonRows />
+                ) : paginatedItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-6 py-20 text-center opacity-20"
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-[0.5em]">
+                        No records found
+                      </p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  paginatedItems.map((product) => (
+                    <RegistryRow
+                      key={product.id}
+                      product={product}
+                      onUpdate={handleUpdate}
+                      onDelete={handleDelete}
+                    />
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Sheet Footer: Pagination */}
+          <footer className="border-t border-border bg-muted/20 px-6 py-4 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-secondary/50 uppercase tracking-[0.2em]">
+              Showing {paginatedItems.length} of {filteredItems.length} records
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+                className="h-8 w-8 rounded border border-border bg-card flex items-center justify-center text-secondary/60 hover:text-primary disabled:opacity-30 transition-all"
+                aria-label="Previous Page"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div className="px-4 text-[10px] font-black tracking-widest text-foreground">
+                PAGE {currentPage} / {totalPages || 1}
+              </div>
+              <button
+                disabled={currentPage === totalPages || totalPages === 0}
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="h-8 w-8 rounded border border-border bg-card flex items-center justify-center text-secondary/60 hover:text-primary disabled:opacity-30 transition-all"
+                aria-label="Next Page"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </footer>
         </div>
       </div>
     </main>
@@ -192,9 +461,11 @@ export function InventoryRegistry() {
 function SkeletonRows() {
   return (
     <>
-      {[...Array(5)].map((_, i) => (
+      {[...Array(8)].map((_, i) => (
         <tr key={i} className="animate-pulse">
-          <td colSpan={5} className="px-8 py-6 h-20 bg-muted/5" />
+          <td colSpan={6} className="px-6 py-4 h-16 border-b border-border/10">
+            <div className="h-4 bg-muted/40 rounded-sm w-full" />
+          </td>
         </tr>
       ))}
     </>

@@ -3,23 +3,24 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { toast } from "sonner"; // Optional: for feedback
+import { ProductResponse } from "@/lib/api/generated/models";
 
 // 1. Define Types based on your Schema
-export interface BaseAttributes {
-  unit_of_measure: string;
-  category: string;
-  unit_price: number;
-}
+// export interface BaseAttributes {
+//   unit_of_measure: string;
+//   category: string;
+//   unit_price: number;
+// }
 
-export interface Product {
-  id: string;
-  business_id: string;
-  name: string;
-  price: number;
-  stock: number;
-  active: boolean;
-  attributes: BaseAttributes;
-}
+// export interface Product {
+//   id: string;
+//   business_id: string;
+//   name: string;
+//   price: number;
+//   stock: number;
+//   active: boolean;
+//   attributes: BaseAttributes;
+// }
 
 export function useProducts(businessId: string) {
   const queryClient = useQueryClient();
@@ -28,7 +29,7 @@ export function useProducts(businessId: string) {
   const productsQuery = useQuery({
     queryKey: ["products", businessId],
     queryFn: async () => {
-      const { data } = await axios.get<Product[]>(
+      const { data } = await axios.get<ProductResponse[]>(
         `/api/v1/products?business_id=${businessId}`,
       );
       return data;
@@ -38,7 +39,7 @@ export function useProducts(businessId: string) {
 
   // --- CREATE PRODUCT ---
   const createProduct = useMutation({
-    mutationFn: async (newProduct: Partial<Product>) => {
+    mutationFn: async (newProduct: Partial<ProductResponse>) => {
       const { data } = await axios.post("/api/v1/products", newProduct);
       return data;
     },
@@ -54,7 +55,7 @@ export function useProducts(businessId: string) {
 
   // --- UPDATE PRODUCT ---
   const updateProduct = useMutation({
-    mutationFn: async (update: Partial<Product>) => {
+    mutationFn: async (update: Partial<ProductResponse>) => {
       console.log("Updating product with data:", update);
       const { data } = await axios.patch("/api/v1/products", update);
       return data;
