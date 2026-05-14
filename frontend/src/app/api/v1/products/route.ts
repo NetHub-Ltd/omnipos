@@ -53,6 +53,8 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  console.log("Creating a product with body:", body); // Debug log
   const res = await fetch(`${API_BASE}/products/register`, {
     method: "POST",
     headers: {
@@ -75,13 +77,14 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = await request.json();
-  if (!body || !body.product_id) {
+  console.log("Update request body:", body); // Debug log
+  if (!body) {
     return NextResponse.json(
       { error: "Invalid request body" },
       { status: 400 },
     );
   }
-  const res = await fetch(`${API_BASE}/products/update`, {
+  const res = await fetch(`${API_BASE}/products/${body.id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -104,23 +107,24 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = await request.json();
+  console.log("Delete request body:", body.product_id); // Debug log
   if (!body || !body.product_id) {
     return NextResponse.json(
       { error: "Invalid request body" },
       { status: 400 },
     );
   }
-  const res = await fetch(`${API_BASE}/products/delete`, {
+  const res = await fetch(`${API_BASE}/products/${body.product_id}`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.accessToken}`,
     },
-    body: JSON.stringify(body),
+    body: null, // DELETE typically doesn't have a body, but if your backend expects it, you can include it
   });
-  const data = await res.json();
-  if (!data.status) {
-    return NextResponse.json({ error: data.message }, { status: res.status });
+  if (!res.ok) {
+    const errorData = await res.json();
+    return NextResponse.json({ error: errorData.message || "Failed to delete product" }, { status: res.status });
   }
   return NextResponse.json(
     { message: "Product deleted successfully" },

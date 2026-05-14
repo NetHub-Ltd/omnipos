@@ -42,9 +42,8 @@ class BaseAttributes(BaseModel):
     - Nothing is enforced here
     - This is a reference contract only
     """
-    unit_of_measure: str
-    category: str
-    unit_price: float
+    unit_of_measure: Optional[str] = None
+    buying_price: Optional[float] = None
     sku: Optional[str] = None
 
 
@@ -83,29 +82,39 @@ class CategoryResponse(BaseResponseSchema):
 # =========================================================
 # PRODUCT SCHEMAS
 # =========================================================
+class ProductBase(BaseModel):
+    business_id: UUID
+    label: str
+    selling_price: float
+    track_stock: bool = True
+    stock: float
+    category: Optional[str] = "General"
+    attributes: BaseAttributes = Field(default_factory=BaseAttributes)
+
 class ProductCreate(BaseModel):
     business_id: UUID
-    name: str
-    price: float
+    label: str
+    selling_price: float
     stock: float
+    category: Optional[str] = "General"
     attributes: BaseAttributes = Field(default_factory=BaseAttributes)
 
 class ProductUpdate(BaseModel):
-    name: Optional[str] = None
-    price: Optional[float] = None
+    label: Optional[str] = None
+    selling_price: Optional[float] = None
     stock: Optional[int] = None
-    attributes: Optional[Dict[str, Any]] = None
-    # category_id: Optional[UUID] = None
+    track_stock: Optional[bool] = None
+    category: Optional[str] = None
+    attributes: Optional[BaseAttributes] = None
 
 
 class ProductResponse(BaseResponseSchema):
-    name: str
-    price: float
+    label: str
+    selling_price: float
+    track_stock: bool
     stock: int
     active: bool
-    # business_id: UUID
-
-    attributes: Dict[str, Any]
+    attributes: BaseAttributes
 
     # Optional lightweight embed (avoid deep nesting)
     # category: Optional["CategoryResponse"] = None

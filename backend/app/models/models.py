@@ -33,12 +33,12 @@ class Business(BaseMixin, table=True):
 class Product(BaseMixin, table=True):
     __tablename__ = "products"
     business_id: UUID = Field(foreign_key="businesses.id", index=True)
-    name: str
-    price: float
-    # Changed to float to allow 1.5kg or 0.75 litres
-    stock: float = 0.0
+    label: str = Field(index=True, default="Product Label")
+    selling_price: float = Field(default=0.0)
+    track_stock: bool = Field(index=True, default=True)
+    stock: float = Field(default=0.0)
     active: bool = Field(index=True, default=True)
-    # Everything else goes here (barcode, category, uom, expiry)
+    category: str = Field(index=True, default="General")
     attributes: Dict[str, Any] = Field(
         sa_column=Column(JSONB),
         default_factory=dict
